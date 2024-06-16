@@ -1,66 +1,81 @@
-from selenium.webdriver.common.by import By
+import requests
+import csv
+import datetime
 import time
+from constants import API_AD_LISTING, API_PRODUCT_GRAPH, CSV_HEADERS
 
-def get_attribute_or_empty(driver, selector):
-    try:
-        element = driver.find_element(By.CSS_SELECTOR, selector)
-        return element.text.strip()
-    except:
-        return ''
+def fetch_car_info(id):
+    api_url = API_AD_LISTING.format(id)
+    response = requests.get(api_url)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        return None
 
-def click_view_more_buttons(driver):
-    try:
-        buttons = driver.find_elements(By.CSS_SELECTOR, 'button')
-        for button in buttons:
-            if button.text.strip() == 'Xem thêm':
-                button.click()
-                time.sleep(1)  # đợi một chút để nội dung tải xong
-    except:
-        pass
+def fetch_product_info(id):
+    api_url = API_PRODUCT_GRAPH.format(id)
+    response = requests.get(api_url)
+    if response.status_code == 200:
+        return response.json()
+    else:
+        return None
 
-def scrape_data(driver, href_link):
-    driver.get(href_link)
-    
-    # Nhấn nút "Xem thêm" hai lần
-    click_view_more_buttons(driver)
-    click_view_more_buttons(driver)
-    
-    name_element = driver.find_element(By.CSS_SELECTOR, 'h1')
-    name = name_element.text.strip()
-    price_element = driver.find_element(By.CSS_SELECTOR, 'b')
-    price = price_element.text.strip()
-    
-    # Thêm các thông tin cần lấy vào đây, sau khi kiểm tra xem chúng có tồn tại không
-    mileage = get_attribute_or_empty(driver, 'span[itemprop="mileage_v2"]')
-    number_of_owners = get_attribute_or_empty(driver, 'span[itemprop="number_of_owners"]')
-    car_brand = get_attribute_or_empty(driver, 'span[itemprop="carbrand"]')
-    car_model = get_attribute_or_empty(driver, 'span[itemprop="carmodel"]')
-    manufacture_date = get_attribute_or_empty(driver, 'span[itemprop="mfdate"]')
-    car_origin = get_attribute_or_empty(driver, 'span[itemprop="carorigin"]')
-    condition = get_attribute_or_empty(driver, 'span[itemprop="condition_ad"]')
-    option = get_attribute_or_empty(driver, 'span[itemprop="option"]')
-    gearbox = get_attribute_or_empty(driver, 'span[itemprop="gearbox"]')
-    fuel = get_attribute_or_empty(driver, 'span[itemprop="fuel"]')
-    car_type = get_attribute_or_empty(driver, 'span[itemprop="cartype"]')
-    car_seats = get_attribute_or_empty(driver, 'span[itemprop="carseats"]')
-    drivetrain = get_attribute_or_empty(driver, 'span[itemprop="drivetrain"]')
-    engine_type = get_attribute_or_empty(driver, 'span[itemprop="engine_type"]')
-    horse_power = get_attribute_or_empty(driver, 'span[itemprop="horse_power"]')
-    torque = get_attribute_or_empty(driver, 'span[itemprop="torque"]')
-    engine_capacity = get_attribute_or_empty(driver, 'span[itemprop="engine_capacity"]')
-    kml_combined = get_attribute_or_empty(driver, 'span[itemprop="kml_combined"]')
-    air_bag = get_attribute_or_empty(driver, 'span[itemprop="air_bag"]')
-    minimum_ground_clearance = get_attribute_or_empty(driver, 'span[itemprop="minimum_ground_clearance"]')
-    doors = get_attribute_or_empty(driver, 'span[itemprop="doors"]')
-    veh_unladen_weight = get_attribute_or_empty(driver, 'span[itemprop="veh_unladen_weight"]')
-    veh_gross_weight = get_attribute_or_empty(driver, 'span[itemprop="veh_gross_weight"]')
-    veh_warranty_policy = get_attribute_or_empty(driver, 'span[itemprop="veh_warranty_policy"]')
-    tbu = get_attribute_or_empty(driver, 'span[itemprop="tbu"]')
-    valid_registration = get_attribute_or_empty(driver, 'span[itemprop="valid_registration"]')
-    include_accessories = get_attribute_or_empty(driver, 'span[itemprop="include_accessories"]')
-    
-    return [href_link, name, price, mileage, number_of_owners, car_brand, car_model, manufacture_date,
-            car_origin, condition, option, gearbox, fuel, car_type, car_seats, drivetrain, engine_type,
-            horse_power, torque, engine_capacity, kml_combined, air_bag, minimum_ground_clearance, doors,
-            veh_unladen_weight, veh_gross_weight, veh_warranty_policy, tbu, valid_registration,
-            include_accessories]
+def save_to_csv(data):
+    current_datetime = datetime.datetime.now()
+    filename = current_datetime.strftime('%d-%m-%Y-%H-%M.csv')
+
+    with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(CSV_HEADERS)
+
+        for item in data:
+            if 'product_id' not in item['ad']:
+                continue
+
+            ad = item['ad']
+            parameters = item['parameters']
+            product_info = fetch_product_info(ad['product_id'])
+            if not product_info:
+                continue
+
+            link = f"https://xe.chotot.com/mua-ban-oto-thanh-pho-thu-duc-tp-ho-chi-minh/{ad['list_id']}.htm#px=SR-stickyad-[PO-1][PL-top]"
+            name = ad.get('subject', '')
+            price = ad.get('price_string', '')
+            city = ad.get('region_name', '')
+            mileage = next((param['value'] for param in parameters if param['id'] == 'mileage_v2'), '')
+            number_of_owners = next((param['value'] for param in parameters if param['id'] == 'number_of_owners'), '')
+            car_brand = next((param['value'] for param in parameters if param['id'] == 'carbrand'), '')
+            car_model = next((param['value'] for param in parameters if param['id'] == 'carmodel'), '')
+            manufacture_date = next((param['value'] for param in parameters if param['id'] == 'mfdate'), '')
+            car_origin = next((param['value'] for param in parameters if param['id'] == 'carorigin'), '')
+            condition = next((param['value'] for param in parameters if param['id'] == 'condition_ad'), '')
+            option = next((param['value'] for param in parameters if param['id'] == 'option'), '')
+            gearbox = next((param['value'] for param in parameters if param['id'] == 'gearbox'), '')
+            fuel = next((param['value'] for param in parameters if param['id'] == 'fuel'), '')
+            car_type = next((param['value'] for param in parameters if param['id'] == 'cartype'), '')
+            car_seats = next((param['value'] for param in parameters if param['id'] == 'carseats'), '')
+
+            # API_PRODUCT_GRAPH
+            drivetrain = product_info.get('drivetrain', '')
+            engine_type = product_info.get('engine_type', '')
+            horse_power = product_info.get('horse_power', '')
+            torque = product_info.get('torque', '')
+            engine_capacity = product_info.get('engine_capacity', '')
+            kml_combined = product_info.get('kml_combined', '')
+            air_bag = product_info.get('air_bag', '')
+            minimum_ground_clearance = product_info.get('minimum_ground_clearance', '')
+            doors = product_info.get('doors', '')
+
+            veh_unladen_weight = next((param['value'] for param in parameters if param['id'] == 'veh_unladen_weight'), '')
+            veh_gross_weight = next((param['value'] for param in parameters if param['id'] == 'veh_gross_weight'), '')
+            veh_warranty_policy = next((param['value'] for param in parameters if param['id'] == 'veh_warranty_policy'), '')
+            tbu = next((param['value'] for param in parameters if param['id'] == 'tbu'), '')
+            valid_registration = next((param['value'] for param in parameters if param['id'] == 'valid_registration'), '')
+            include_accessories = next((param['value'] for param in parameters if param['id'] == 'include_accessories'), '')
+
+            writer.writerow([link, name, price, city, mileage, number_of_owners, car_brand, car_model,
+                             manufacture_date, car_origin, condition, option, gearbox, fuel, car_type,
+                             car_seats, drivetrain, engine_type, horse_power, torque, engine_capacity,
+                             kml_combined, air_bag, minimum_ground_clearance, doors, veh_unladen_weight,
+                             veh_gross_weight, veh_warranty_policy, tbu, valid_registration,
+                             include_accessories])
