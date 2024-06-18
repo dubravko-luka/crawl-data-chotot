@@ -1,4 +1,5 @@
-source ctenv/bin/activate
+source ctenv/bin/activate # mac
+myenv\Scripts\activate # window
 pip install requests selenium argparse pyinstaller
 pip freeze > requirements.txt
 
