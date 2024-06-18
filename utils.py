@@ -22,7 +22,13 @@ def fetch_product_info(id):
 
 def save_to_csv(data):
     current_datetime = datetime.datetime.now()
-    filename = current_datetime.strftime('%d-%m-%Y-%H-%M.csv')
+    current_datetime = datetime.datetime.now()
+
+    filename = current_datetime.strftime('%d') + 'D-' + \
+            current_datetime.strftime('%-m') + 'M-' + \
+            current_datetime.strftime('%Y') + 'Y-' + \
+            current_datetime.strftime('%-H') + 'h-' + \
+            current_datetime.strftime('%M') + 'm.csv'
 
     with open(filename, 'w', newline='', encoding='utf-8') as csvfile:
         writer = csv.writer(csvfile)
@@ -34,11 +40,12 @@ def save_to_csv(data):
 
             ad = item['ad']
             parameters = item['parameters']
+            link = item['link']
             product_info = fetch_product_info(ad['product_id'])
             if not product_info:
                 continue
 
-            link = f"https://xe.chotot.com/mua-ban-oto-thanh-pho-thu-duc-tp-ho-chi-minh/{ad['list_id']}.htm#px=SR-stickyad-[PO-1][PL-top]"
+            link = link
             name = ad.get('subject', '')
             price = ad.get('price_string', '')
             city = ad.get('region_name', '')

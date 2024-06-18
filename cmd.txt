@@ -1,0 +1,8 @@
+source ctenv/bin/activate
+pip install requests selenium argparse pyinstaller
+pip freeze > requirements.txt
+
+# macos
+pyinstaller --onefile main.py
+
+#window
